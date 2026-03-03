@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { Home, Receipt, BarChart3, PiggyBank, Users, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -51,34 +51,34 @@ export default function TabLayout() {
         name="add-placeholder"
         options={{
           title: '',
-          tabBarIcon: () => (
-            <View
+          tabBarLabel: () => null,
+          tabBarItemStyle: { width: 0, minWidth: 0, maxWidth: 0, padding: 0 },
+          tabBarButton: () => (
+            <TouchableOpacity
               accessibilityLabel="Add transaction"
+              activeOpacity={0.8}
+              onPress={() => router.push('/add-transaction')}
               style={{
-                width: 56,
-                height: 56,
+                position: 'absolute',
+                top: -65,
+                left: '0.0%',
+                marginLeft: 13,
+                width: 60,
+                height: 60,
                 backgroundColor: '#059669',
-                borderRadius: 28,
+                borderRadius: 30,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginTop: -20,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-                elevation: 6,
+                shadowOpacity: 0.2,
+                shadowRadius: 10,
+                elevation: 8,
               }}
             >
-              <Plus size={24} color="#ffffff" />
-            </View>
+              <Plus size={28} color="#ffffff" />
+            </TouchableOpacity>
           ),
-          tabBarLabel: () => null,
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push('/add-transaction');
-          },
         }}
       />
       <Tabs.Screen
