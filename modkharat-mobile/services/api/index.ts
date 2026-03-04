@@ -1,0 +1,10 @@
+export * as authApi from './auth';
+export * as transactionsApi from './transactions';
+export * as budgetsApi from './budgets';
+export * as goalsApi from './goals';
+export * as householdsApi from './households';
+export * as notificationsApi from './notifications';
+export * as analyticsApi from './analytics';
+export * as categoriesApi from './categories';
+export { supabase } from './supabase';
+export { ApiError } from './client';
