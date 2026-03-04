@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Modkharat needs microphone access to record voice transactions.",
+        "NSCameraUsageDescription": "Modkharat needs camera access to scan receipts.",
+        "NSPhotoLibraryUsageDescription": "Modkharat needs photo library access to select receipt images."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +36,20 @@
     },
     "plugins": [
       "expo-router",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Modkharat to access your microphone to record transaction details."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Modkharat to access your photos to select receipt images.",
+          "cameraPermission": "Allow Modkharat to access your camera to scan receipts."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

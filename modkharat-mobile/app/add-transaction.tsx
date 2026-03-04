@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   X, ArrowUpRight, ArrowDownRight, Edit3, MessageSquare, Mic, Camera,
-  Check, ArrowLeft,
+  Check, ArrowLeft, ImageIcon,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/context/AppContext';
 import { useApi } from '@/hooks/useApi';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { useImagePicker } from '@/hooks/useImagePicker';
 import { categoriesApi, transactionsApi } from '@/services/api';
 import type { TransactionType, CaptureMethod } from '@/types/models';
 
@@ -38,8 +40,11 @@ export default function AddTransactionScreen() {
   const [accountId, setAccountId] = useState('');
   const [notes, setNotes] = useState('');
   const [smsText, setSmsText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Device capture hooks
+  const audioRecording = useAudioRecording();
+  const imagePicker = useImagePicker();
 
   // Set default category/account when data loads
   useEffect(() => {
@@ -90,22 +95,29 @@ export default function AddTransactionScreen() {
           if (!transactionType) setTransactionType(res.transaction.type);
         }
       } else if (captureMethod === 'voice') {
-        // TODO: Integrate with real audio recording (expo-av)
-        // For now, show a placeholder until audio capture is wired
-        Alert.alert(
-          language === 'en' ? 'Coming Soon' : 'قريبًا',
-          language === 'en' ? 'Voice recording will be available in the next update.' : 'سيتوفر التسجيل الصوتي في التحديث القادم.',
-        );
-        setIsProcessing(false);
-        return;
+        const formData = audioRecording.getFormData();
+        if (!formData) {
+          Alert.alert(
+            language === 'en' ? 'No Recording' : 'لا يوجد تسجيل',
+            language === 'en' ? 'Please record your voice first.' : 'يرجى تسجيل صوتك أولاً.',
+          );
+          setIsProcessing(false);
+          return;
+        }
+        const res = await transactionsApi.submitVoice(formData);
+        await pollJob(res.data.id);
       } else if (captureMethod === 'scan') {
-        // TODO: Integrate with camera (expo-image-picker)
-        Alert.alert(
-          language === 'en' ? 'Coming Soon' : 'قريبًا',
-          language === 'en' ? 'Receipt scanning will be available in the next update.' : 'سيتوفر مسح الإيصالات في التحديث القادم.',
-        );
-        setIsProcessing(false);
-        return;
+        const formData = imagePicker.getFormData();
+        if (!formData) {
+          Alert.alert(
+            language === 'en' ? 'No Image' : 'لا توجد صورة',
+            language === 'en' ? 'Please take a photo or select an image first.' : 'يرجى التقاط صورة أو اختيار صورة أولاً.',
+          );
+          setIsProcessing(false);
+          return;
+        }
+        const res = await transactionsApi.submitOcr(formData);
+        await pollJob(res.data.id);
       }
       setFormStep('review');
     } catch (err: any) {
@@ -340,17 +352,32 @@ export default function AddTransactionScreen() {
         {formStep === 'capture' && captureMethod === 'voice' && (
           <View className="items-center pt-12">
             <Pressable
-              onPress={() => setIsRecording(!isRecording)}
-              className={`w-24 h-24 rounded-full items-center justify-center ${isRecording ? 'bg-red-500' : 'bg-emerald-600'}`}
+              onPress={async () => {
+                try {
+                  if (audioRecording.isRecording) {
+                    await audioRecording.stopRecording();
+                  } else {
+                    audioRecording.reset();
+                    await audioRecording.startRecording();
+                  }
+                } catch (err: any) {
+                  Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Recording failed');
+                }
+              }}
+              className={`w-24 h-24 rounded-full items-center justify-center ${audioRecording.isRecording ? 'bg-red-500' : 'bg-emerald-600'}`}
               accessibilityRole="button"
-              accessibilityLabel={isRecording ? t('transactionForm.recording') : t('transactionForm.tapToRecord')}
+              accessibilityLabel={audioRecording.isRecording ? t('transactionForm.recording') : t('transactionForm.tapToRecord')}
             >
               <Mic size={36} color="#ffffff" />
             </Pressable>
             <Text className="text-slate-500 mt-4 text-sm">
-              {isRecording ? t('transactionForm.recording') : t('transactionForm.tapToRecord')}
+              {audioRecording.isRecording
+                ? `${t('transactionForm.recording')} ${Math.floor(audioRecording.duration / 60)}:${String(audioRecording.duration % 60).padStart(2, '0')}`
+                : audioRecording.recordingUri
+                  ? (language === 'en' ? 'Recording ready — tap Continue' : 'التسجيل جاهز — اضغط متابعة')
+                  : t('transactionForm.tapToRecord')}
             </Text>
-            {isRecording && (
+            {audioRecording.isRecording && (
               <View className="flex-row gap-1 mt-6">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <View
@@ -361,17 +388,71 @@ export default function AddTransactionScreen() {
                 ))}
               </View>
             )}
+            {audioRecording.recordingUri && !audioRecording.isRecording && (
+              <View className="mt-6 bg-emerald-50 rounded-xl px-6 py-3">
+                <Text className="text-emerald-700 font-medium text-sm">
+                  {language === 'en' ? `${audioRecording.duration}s recorded` : `تم التسجيل ${audioRecording.duration} ثانية`}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
         {formStep === 'capture' && captureMethod === 'scan' && (
           <View className="items-center pt-8">
-            <View className="w-full aspect-[3/4] bg-slate-900 rounded-2xl items-center justify-center overflow-hidden">
-              <View className="w-3/4 h-3/4 border-2 border-white/50 rounded-xl items-center justify-center">
-                <Camera size={48} color="rgba(255,255,255,0.5)" />
-                <Text className="text-white/60 mt-3 text-sm">{t('transactionForm.pointCamera')}</Text>
+            {imagePicker.imageUri ? (
+              <View className="w-full">
+                <Image
+                  source={{ uri: imagePicker.imageUri }}
+                  className="w-full aspect-[3/4] rounded-2xl"
+                  resizeMode="cover"
+                />
+                <Pressable
+                  onPress={() => imagePicker.reset()}
+                  className="mt-3 bg-slate-100 py-2 rounded-xl items-center active:bg-slate-200"
+                  accessibilityRole="button"
+                >
+                  <Text className="text-slate-600 text-sm">
+                    {language === 'en' ? 'Retake / Choose another' : 'إعادة التقاط / اختيار أخرى'}
+                  </Text>
+                </Pressable>
               </View>
-            </View>
+            ) : (
+              <View className="w-full gap-3">
+                <Pressable
+                  onPress={async () => {
+                    try { await imagePicker.takePhoto(); } catch (err: any) {
+                      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Camera failed');
+                    }
+                  }}
+                  className="w-full bg-emerald-50 rounded-2xl p-6 items-center active:bg-emerald-100"
+                  accessibilityRole="button"
+                  accessibilityLabel={language === 'en' ? 'Take Photo' : 'التقاط صورة'}
+                >
+                  <Camera size={36} color="#059669" />
+                  <Text className="text-emerald-700 font-medium mt-2">
+                    {language === 'en' ? 'Take Photo' : 'التقاط صورة'}
+                  </Text>
+                  <Text className="text-emerald-600/60 text-xs mt-1">{t('transactionForm.pointCamera')}</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={async () => {
+                    try { await imagePicker.pickFromGallery(); } catch (err: any) {
+                      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Gallery failed');
+                    }
+                  }}
+                  className="w-full bg-slate-50 rounded-2xl p-6 items-center active:bg-slate-100"
+                  accessibilityRole="button"
+                  accessibilityLabel={language === 'en' ? 'Choose from Gallery' : 'اختيار من المعرض'}
+                >
+                  <ImageIcon size={36} color="#475569" />
+                  <Text className="text-slate-700 font-medium mt-2">
+                    {language === 'en' ? 'Choose from Gallery' : 'اختيار من المعرض'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
