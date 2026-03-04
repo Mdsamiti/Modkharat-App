@@ -11,6 +11,7 @@ import { apiLimiter } from './middleware/rate-limit.js';
 import { idempotency } from './middleware/idempotency.js';
 import { pool } from './lib/db.js';
 import routes from './routes/index.js';
+import webhookRoutes from './routes/webhooks.js';
 
 const app = express();
 
@@ -39,6 +40,9 @@ app.get('/health/ready', async (_req, res) => {
     res.status(503).json({ status: 'error', db: 'disconnected' });
   }
 });
+
+// --- Webhook routes (no JWT auth, uses provider signature validation) ---
+app.use('/v1/webhooks', express.urlencoded({ extended: false }), webhookRoutes);
 
 // --- Auth + context for all /v1 routes ---
 app.use('/v1', apiLimiter, authMiddleware, idempotency, contextMiddleware, routes);

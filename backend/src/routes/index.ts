@@ -8,6 +8,7 @@ import notificationsRoutes from './notifications.js';
 import analyticsRoutes from './analytics.js';
 import categoriesRoutes from './categories.js';
 import settingsRoutes from './settings.js';
+import importRoutes from './import.js';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use('/goals', goalsRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/import', importRoutes);
 router.use('/', categoriesRoutes);
 
 export default router;

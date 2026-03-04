@@ -137,6 +137,35 @@ export interface ProfileDTO {
 }
 
 // ============================================================
+// Phase 2: Ingestion DTOs
+// ============================================================
+
+export interface IngestionJobDTO {
+  id: string;
+  type: 'ocr' | 'voice' | 'sms';
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  transactionId: string | null;
+  confidence: number | null;
+  errorMessage: string | null;
+  parsedResult: Record<string, any> | null;
+  createdAt: string;
+}
+
+export interface SmsParseInput {
+  rawText: string;
+  senderPhone?: string;
+}
+
+export interface ParsedTransaction {
+  merchant: string;
+  amount: number;
+  date: string | null;
+  type: 'income' | 'expense';
+  currency: string;
+  confidence: number;
+}
+
+// ============================================================
 // Input Schemas (used with Zod in controllers)
 // ============================================================
 

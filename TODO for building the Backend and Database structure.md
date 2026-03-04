@@ -126,7 +126,7 @@
 - [ ] Provider adapter tests with mocked Google/Twilio responses and timeout/failure cases. *(Deferred to Phase 2)*
 - [x] Contract tests for response shape consistency (`data/error/meta`) to protect frontend integration.
 - [x] Security tests for SQL injection vectors, JWT tampering, missing permission checks, and rate limiting.
-- [ ] Performance tests for transaction list and analytics endpoints using realistic dataset volumes.
+- [x] Performance tests for transaction list and analytics endpoints using realistic dataset volumes.
 
 ## 12. Deployment, CI/CD, and Operations
 - [ ] Deploy API and worker as two Railway services from same repo.
@@ -156,9 +156,9 @@
 - [ ] OCR receipt import returns job ID, then job completes with parsed draft transaction. *(Deferred to Phase 2)*
 - [ ] Voice import handles Arabic utterance and returns structured draft transaction. *(Deferred to Phase 2)*
 - [x] Duplicate import with same idempotency key does not create duplicate transaction rows.
-- [ ] Analytics endpoints match transaction totals for seeded deterministic dataset.
+- [x] Analytics endpoints match transaction totals for seeded deterministic dataset.
 - [ ] Family invite via Twilio SMS records sent status and webhook delivery update. *(Deferred to Phase 2)*
-- [ ] Notification `mark-read` and `mark-all-read` update only current user records.
+- [x] Notification `mark-read` and `mark-all-read` update only current user records.
 - [x] Account deletion/export flows are auditable and permission-protected.
 
 ## 15. Assumptions and Defaults Chosen
