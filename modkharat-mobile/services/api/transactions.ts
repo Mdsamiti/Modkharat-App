@@ -1,4 +1,4 @@
-import { get, post, patch, del } from './client';
+import { get, post, patch, del, postFormData } from './client';
 import type { Transaction } from '@/types/models';
 
 interface TransactionListResponse {
@@ -59,4 +59,46 @@ export async function updateTransaction(id: string, fields: Partial<{
 
 export async function deleteTransaction(id: string) {
   return del(`/v1/transactions/${id}`);
+}
+
+// --- Import / Ingestion APIs ---
+
+export interface IngestionJobDTO {
+  id: string;
+  type: 'ocr' | 'voice' | 'sms';
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  transactionId: string | null;
+  confidence: number | null;
+  errorMessage: string | null;
+  parsedResult: Record<string, any> | null;
+  createdAt: string;
+}
+
+interface ImportJobResponse {
+  data: IngestionJobDTO;
+}
+
+interface SmsImportResponse {
+  data: IngestionJobDTO;
+  transaction: Transaction | null;
+}
+
+/** Submit a receipt image for OCR processing */
+export async function submitOcr(formData: FormData) {
+  return postFormData<ImportJobResponse>('/v1/import/ocr', formData);
+}
+
+/** Submit an audio recording for voice transcription */
+export async function submitVoice(formData: FormData) {
+  return postFormData<ImportJobResponse>('/v1/import/voice', formData);
+}
+
+/** Submit a bank SMS for parsing (synchronous) */
+export async function submitSms(input: { rawText: string; senderPhone?: string }) {
+  return post<SmsImportResponse>('/v1/import/sms', input);
+}
+
+/** Poll ingestion job status */
+export async function getJobStatus(jobId: string) {
+  return get<ImportJobResponse>(`/v1/import/jobs/${jobId}`);
 }

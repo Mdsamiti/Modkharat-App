@@ -34,7 +34,7 @@ export const bankPatterns: BankPattern[] = [
       },
       {
         // Arabic: "عملية شراء بمبلغ 245.50 ريال من كارفور"
-        regex: /(?:عملية شراء|مشتريات)\s*(?:بمبلغ)?\s*([\d,]+\.?\d*)\s*(?:ريال|ر\.?س\.?)\s*(?:من|في|لدى)\s+(.+?)(?:\s+بتاريخ\s+(\d{2}\/\d{2}\/\d{4}))?/,
+        regex: /(?:عملية شراء|مشتريات)\s*(?:بمبلغ)?\s*([\d,]+\.?\d*)\s*(?:ريال|ر\.?س\.?)\s*(?:من|في|لدى)\s+(.+?)(?:\s+بتاريخ\s+(\d{2}\/\d{2}\/\d{4}))?\s*$/,
         extract: (m) => ({
           amount: parseFloat(m[1].replace(/,/g, '')),
           merchant: m[2].trim(),
@@ -67,7 +67,7 @@ export const bankPatterns: BankPattern[] = [
     patterns: [
       {
         // "SNB: Purchase SAR 89.00 at STARBUCKS 04/03/2026"
-        regex: /SNB:\s*Purchase\s+SAR\s*([\d,]+\.?\d*)\s+at\s+(.+?)(?:\s+(\d{2}\/\d{2}\/\d{4}))?/i,
+        regex: /SNB:\s*Purchase\s+SAR\s*([\d,]+\.?\d*)\s+at\s+(.+?)(?:\s+(\d{2}\/\d{2}\/\d{4}))?\s*$/i,
         extract: (m) => ({
           amount: parseFloat(m[1].replace(/,/g, '')),
           merchant: m[2].trim(),
@@ -77,7 +77,7 @@ export const bankPatterns: BankPattern[] = [
       },
       {
         // "الأهلي: عملية شراء 89.00 ريال في ستاربكس"
-        regex: /الأهلي:\s*(?:عملية شراء|شراء)\s*([\d,]+\.?\d*)\s*(?:ريال|ر\.?س\.?)\s*(?:في|من|لدى)\s+(.+)/,
+        regex: /الأهلي:\s*(?:عملية شراء|شراء)\s*([\d,]+\.?\d*)\s*(?:ريال|ر\.?س\.?)\s*(?:في|من|لدى)\s+(.+?)\s*$/,
         extract: (m) => ({
           amount: parseFloat(m[1].replace(/,/g, '')),
           merchant: m[2].trim(),

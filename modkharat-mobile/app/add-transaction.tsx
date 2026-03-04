@@ -39,6 +39,7 @@ export default function AddTransactionScreen() {
   const [notes, setNotes] = useState('');
   const [smsText, setSmsText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Set default category/account when data loads
   useEffect(() => {
@@ -55,18 +56,63 @@ export default function AddTransactionScreen() {
     { id: 'scan' as CaptureMethod, icon: Camera, label: t('addTransaction.scan'), desc: t('addTransaction.scanDesc') },
   ];
 
-  const handleContinue = () => {
-    if (captureMethod === 'sms' && smsText) {
-      setAmount('245.50');
-      setMerchant('Carrefour');
-    } else if (captureMethod === 'voice') {
-      setAmount('32.00');
-      setMerchant('Starbucks');
-    } else if (captureMethod === 'scan') {
-      setAmount('189.00');
-      setMerchant('Amazon');
+  /** Poll a job until it completes or fails */
+  const pollJob = async (jobId: string, maxAttempts = 20): Promise<void> => {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const res = await transactionsApi.getJobStatus(jobId);
+      const job = res.data;
+      if (job.status === 'completed' && job.transactionId) {
+        // Fetch the created draft transaction to populate the form
+        const txRes = await transactionsApi.getTransaction(job.transactionId);
+        const tx = txRes.data;
+        setAmount(String(tx.amount));
+        setMerchant(tx.merchant);
+        if (tx.date) setDate(tx.date.split('T')[0]);
+        return;
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.errorMessage || (language === 'en' ? 'Processing failed' : 'فشلت المعالجة'));
+      }
     }
-    setFormStep('review');
+    throw new Error(language === 'en' ? 'Processing timed out' : 'انتهت مهلة المعالجة');
+  };
+
+  const handleContinue = async () => {
+    setIsProcessing(true);
+    try {
+      if (captureMethod === 'sms' && smsText) {
+        const res = await transactionsApi.submitSms({ rawText: smsText });
+        if (res.transaction) {
+          setAmount(String(res.transaction.amount));
+          setMerchant(res.transaction.merchant);
+          if (res.transaction.date) setDate(res.transaction.date.split('T')[0]);
+          if (!transactionType) setTransactionType(res.transaction.type);
+        }
+      } else if (captureMethod === 'voice') {
+        // TODO: Integrate with real audio recording (expo-av)
+        // For now, show a placeholder until audio capture is wired
+        Alert.alert(
+          language === 'en' ? 'Coming Soon' : 'قريبًا',
+          language === 'en' ? 'Voice recording will be available in the next update.' : 'سيتوفر التسجيل الصوتي في التحديث القادم.',
+        );
+        setIsProcessing(false);
+        return;
+      } else if (captureMethod === 'scan') {
+        // TODO: Integrate with camera (expo-image-picker)
+        Alert.alert(
+          language === 'en' ? 'Coming Soon' : 'قريبًا',
+          language === 'en' ? 'Receipt scanning will be available in the next update.' : 'سيتوفر مسح الإيصالات في التحديث القادم.',
+        );
+        setIsProcessing(false);
+        return;
+      }
+      setFormStep('review');
+    } catch (err: any) {
+      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed to process');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -402,11 +448,16 @@ export default function AddTransactionScreen() {
         ) : formStep === 'capture' ? (
           <Pressable
             onPress={handleContinue}
-            className="bg-emerald-600 py-4 rounded-xl items-center active:bg-emerald-700"
+            disabled={isProcessing}
+            className={`py-4 rounded-xl items-center ${isProcessing ? 'bg-emerald-400' : 'bg-emerald-600 active:bg-emerald-700'}`}
             accessibilityRole="button"
             accessibilityLabel={language === 'en' ? 'Continue' : 'متابعة'}
           >
-            <Text className="text-white font-semibold">{language === 'en' ? 'Continue' : 'متابعة'}</Text>
+            {isProcessing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-white font-semibold">{language === 'en' ? 'Continue' : 'متابعة'}</Text>
+            )}
           </Pressable>
         ) : (
           <Pressable

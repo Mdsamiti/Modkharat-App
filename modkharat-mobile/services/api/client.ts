@@ -107,3 +107,29 @@ export function patch<T>(path: string, body?: any, householdId?: string) {
 export function del<T>(path: string, householdId?: string) {
   return request<T>('DELETE', path, { householdId });
 }
+
+/** POST multipart/form-data (for file uploads) */
+export async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+  const token = await getAccessToken();
+  if (!token) {
+    throw new ApiError(401, 'NO_SESSION', 'Not authenticated');
+  }
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // Do NOT set Content-Type — fetch sets it with boundary for FormData
+    },
+    body: formData,
+  });
+
+  if (res.status === 204) return undefined as T;
+
+  const json = await res.json();
+  if (!res.ok) {
+    const err = json.error ?? {};
+    throw new ApiError(res.status, err.code ?? 'UNKNOWN', err.message ?? 'Request failed', err.traceId);
+  }
+  return json;
+}
