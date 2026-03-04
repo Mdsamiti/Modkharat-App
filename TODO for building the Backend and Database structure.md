@@ -167,4 +167,4 @@
 - [ ] Deployment: Railway for API/worker, Supabase for DB/Auth/Storage.
 - [x] Authorization model: strict backend-enforced RBAC aligned with family permissions in UI.
 - [ ] OCR/Voice processing mode: async jobs with polling endpoint. *(Deferred to Phase 2)*
-- [ ] Frontend will be updated after backend readiness to replace all mock data calls with `/v1/*` APIs.
+- [x] Frontend updated — all mock data imports replaced with real `/v1/*` API calls across all 12 screens (auth, dashboard, transactions, analytics, planner, family, add-transaction, budget detail, goal detail, goal new, notifications, family members). Added `useApi` hook, Supabase auth integration in AppContext, loading states, error handling, and `expo-secure-store` for token persistence.

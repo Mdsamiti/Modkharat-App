@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Switch, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/context/AppContext';
+import { authApi } from '@/services/api';
 
 export default function SignUpScreen() {
   const { t, i18n } = useTranslation();
@@ -19,6 +20,7 @@ export default function SignUpScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isRTL = language === 'ar';
 
@@ -35,9 +37,17 @@ export default function SignUpScreen() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSignUp = () => {
-    if (validate()) {
-      setAuthenticated(true);
+  const handleSignUp = async () => {
+    if (!validate()) return;
+    setIsSubmitting(true);
+    try {
+      await authApi.signUp(email, password, name);
+      // Auth state listener in AppContext will set isAuthenticated=true
+    } catch (err: any) {
+      const message = err?.message || t('auth.errors.generic');
+      Alert.alert(t('auth.errors.signUpFailed'), message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -155,11 +165,16 @@ export default function SignUpScreen() {
             {/* Sign Up Button */}
             <Pressable
               onPress={handleSignUp}
-              className="bg-emerald-600 py-4 rounded-xl items-center active:bg-emerald-700"
+              disabled={isSubmitting}
+              className={`py-4 rounded-xl items-center ${isSubmitting ? 'bg-emerald-400' : 'bg-emerald-600 active:bg-emerald-700'}`}
               accessibilityRole="button"
               accessibilityLabel={t('auth.signUp')}
             >
-              <Text className="text-white font-semibold text-base">{t('auth.signUp')}</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-semibold text-base">{t('auth.signUp')}</Text>
+              )}
             </Pressable>
 
             {/* Switch to Sign In */}

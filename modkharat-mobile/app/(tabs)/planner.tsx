@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import type { DimensionValue } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next';
 import AppHeader from '@/components/AppHeader';
 import { useApp } from '@/context/AppContext';
 import { useResponsive } from '@/utils/useResponsive';
-import { mockSavingGoals } from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { goalsApi } from '@/services/api';
 
 export default function PlannerScreen() {
   const { t } = useTranslation();
@@ -17,8 +18,22 @@ export default function PlannerScreen() {
   const { isCompact } = useResponsive();
   const currency = language === 'en' ? 'SAR' : 'ر.س';
 
-  const totalSaved = mockSavingGoals.reduce((sum, g) => sum + g.saved, 0);
-  const totalMonthly = mockSavingGoals.reduce((sum, g) => sum + (g.monthlyContribution || 0), 0);
+  const { data, isLoading } = useApi(() => goalsApi.listGoals(), []);
+  const goals = data?.data ?? [];
+
+  const totalSaved = goals.reduce((sum, g) => sum + g.saved, 0);
+  const totalMonthly = goals.reduce((sum, g) => sum + (g.monthlyContribution || 0), 0);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        <AppHeader title={t('planner.title')} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -59,7 +74,7 @@ export default function PlannerScreen() {
         {/* Goals List */}
         <View className="mx-4 mt-4 mb-6">
           <Text className="text-slate-800 font-semibold text-base mb-3">{t('planner.goals')}</Text>
-          {mockSavingGoals.map((goal) => {
+          {goals.map((goal) => {
             const progressColor = goal.progress >= 75 ? '#059669' : goal.progress >= 50 ? '#3b82f6' : '#f59e0b';
             return (
               <Pressable
@@ -104,7 +119,7 @@ export default function PlannerScreen() {
                     <View className="flex-row items-center">
                       <Calendar size={12} color="#94a3b8" />
                       <Text className="text-slate-500 text-xs ml-1">
-                        {goal.targetDate.toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA', {
+                        {new Date(goal.targetDate).toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA', {
                           month: 'short',
                           year: 'numeric',
                         })}
@@ -123,6 +138,9 @@ export default function PlannerScreen() {
               </Pressable>
             );
           })}
+          {goals.length === 0 && (
+            <Text className="text-slate-400 text-center py-8">{language === 'en' ? 'No goals yet' : 'لا توجد أهداف بعد'}</Text>
+          )}
         </View>
       </ScrollView>
     </View>

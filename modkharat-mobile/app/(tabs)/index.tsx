@@ -1,26 +1,62 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import type { DimensionValue } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Target } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import AppHeader from '@/components/AppHeader';
 import { useApp } from '@/context/AppContext';
 import { useResponsive } from '@/utils/useResponsive';
-import {
-  mockBalance, mockIncome, mockExpenses, mockBudgetTotal,
-  mockCategories, mockGoals, mockRecentTransactions,
-} from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { analyticsApi, goalsApi, transactionsApi } from '@/services/api';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { language } = useApp();
   const router = useRouter();
   const { isCompact } = useResponsive();
-  const isRTL = language === 'ar';
   const currency = language === 'en' ? 'SAR' : 'ر.س';
-  const budgetPercent = ((mockExpenses / mockBudgetTotal) * 100).toFixed(1);
+
+  const { data: overview, isLoading: loadingOverview } = useApi(
+    () => analyticsApi.getOverview(),
+    [],
+  );
+  const { data: categories, isLoading: loadingCategories } = useApi(
+    () => analyticsApi.getSpendingByCategory(),
+    [],
+  );
+  const { data: goalsData, isLoading: loadingGoals } = useApi(
+    () => goalsApi.listGoals(),
+    [],
+  );
+  const { data: txData, isLoading: loadingTx } = useApi(
+    () => transactionsApi.listTransactions({ limit: 4 }),
+    [],
+  );
+
+  const income = overview?.data?.income ?? 0;
+  const expenses = overview?.data?.expenses ?? 0;
+  const balance = income - expenses;
+  const budgetTotal = income;
+  const budgetPercent = budgetTotal > 0 ? ((expenses / budgetTotal) * 100).toFixed(1) : '0';
+
+  const spendingCategories = categories?.data ?? [];
+  const goals = goalsData?.data ?? [];
+  const recentTransactions = txData?.data ?? [];
+
+  const isLoading = loadingOverview || loadingCategories || loadingGoals || loadingTx;
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        <AppHeader title={t('tabs.dashboard')} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -32,8 +68,8 @@ export default function DashboardScreen() {
           className="mx-4 mt-4 rounded-2xl p-5"
         >
           <Text className="text-emerald-100 text-sm mb-1" accessibilityRole="text">{t('dashboard.totalBalance')}</Text>
-          <Text className={`text-white font-bold mb-4 ${isCompact ? 'text-2xl' : 'text-3xl'}`} accessibilityLabel={`${t('dashboard.totalBalance')}: ${currency} ${mockBalance.toLocaleString()}`}>
-            {currency} {mockBalance.toLocaleString()}
+          <Text className={`text-white font-bold mb-4 ${isCompact ? 'text-2xl' : 'text-3xl'}`} accessibilityLabel={`${t('dashboard.totalBalance')}: ${currency} ${balance.toLocaleString()}`}>
+            {currency} {balance.toLocaleString()}
           </Text>
           <View className="flex-row justify-between">
             <View className="flex-row items-center">
@@ -42,7 +78,7 @@ export default function DashboardScreen() {
               </View>
               <View>
                 <Text className="text-emerald-100 text-xs">{t('dashboard.income')}</Text>
-                <Text className="text-white font-semibold">{currency} {mockIncome.toLocaleString()}</Text>
+                <Text className="text-white font-semibold">{currency} {income.toLocaleString()}</Text>
               </View>
             </View>
             <View className="flex-row items-center">
@@ -51,7 +87,7 @@ export default function DashboardScreen() {
               </View>
               <View>
                 <Text className="text-emerald-100 text-xs">{t('dashboard.expenses')}</Text>
-                <Text className="text-white font-semibold">{currency} {mockExpenses.toLocaleString()}</Text>
+                <Text className="text-white font-semibold">{currency} {expenses.toLocaleString()}</Text>
               </View>
             </View>
           </View>
@@ -70,72 +106,75 @@ export default function DashboardScreen() {
             />
           </View>
           <Text className="text-slate-400 text-xs mt-1.5">
-            {currency} {mockExpenses.toLocaleString()} {t('dashboard.of')} {currency} {mockBudgetTotal.toLocaleString()}
+            {currency} {expenses.toLocaleString()} {t('dashboard.of')} {currency} {budgetTotal.toLocaleString()}
           </Text>
         </View>
 
         {/* Top Categories */}
-        <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
-          <Text className="text-slate-800 font-semibold text-base mb-3">{t('dashboard.categories')}</Text>
-          {mockCategories.map((cat) => (
-            <View key={cat.id} className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center flex-1">
-                <Text className="text-2xl mr-3">{cat.icon}</Text>
-                <View className="flex-1">
-                  <Text className="text-slate-700 text-sm font-medium">
-                    {language === 'en' ? cat.name.en : cat.name.ar}
-                  </Text>
-                  <View className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                    <View
-                      className="h-full rounded-full"
-                      style={{ width: `${(cat.amount / mockExpenses) * 100}%` as DimensionValue, backgroundColor: cat.color }}
-                    />
+        {spendingCategories.length > 0 && (
+          <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
+            <Text className="text-slate-800 font-semibold text-base mb-3">{t('dashboard.categories')}</Text>
+            {spendingCategories.map((cat) => (
+              <View key={cat.name.en} className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center flex-1">
+                  <View className="flex-1">
+                    <Text className="text-slate-700 text-sm font-medium">
+                      {language === 'en' ? cat.name.en : cat.name.ar}
+                    </Text>
+                    <View className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                      <View
+                        className="h-full rounded-full"
+                        style={{ width: `${expenses > 0 ? (cat.value / expenses) * 100 : 0}%` as DimensionValue, backgroundColor: cat.color }}
+                      />
+                    </View>
                   </View>
                 </View>
+                <Text className="text-slate-800 font-semibold text-sm ml-3">
+                  {currency} {cat.value.toLocaleString()}
+                </Text>
               </View>
-              <Text className="text-slate-800 font-semibold text-sm ml-3">
-                {currency} {cat.amount.toLocaleString()}
-              </Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* Saving Goals */}
-        <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-slate-800 font-semibold text-base">{t('dashboard.goals')}</Text>
-            <Pressable onPress={() => router.push('/(tabs)/planner')} accessibilityRole="link" accessibilityLabel={t('dashboard.viewAll')} hitSlop={8} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text className="text-emerald-600 text-sm font-medium">{t('dashboard.viewAll')}</Text>
-            </Pressable>
-          </View>
-          {mockGoals.map((goal) => (
-            <Pressable
-              key={goal.id}
-              onPress={() => router.push(`/goal/${goal.id}`)}
-              className="mb-3 p-3 bg-slate-50 rounded-xl active:bg-slate-100"
-              accessibilityRole="button"
-              accessibilityLabel={`${goal.name}, ${goal.progress}%`}
-            >
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="flex-row items-center">
-                  <Text className="text-xl mr-2">{goal.icon}</Text>
-                  <Text className="text-slate-700 font-medium">{goal.name}</Text>
+        {goals.length > 0 && (
+          <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-slate-800 font-semibold text-base">{t('dashboard.goals')}</Text>
+              <Pressable onPress={() => router.push('/(tabs)/planner')} accessibilityRole="link" accessibilityLabel={t('dashboard.viewAll')} hitSlop={8} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text className="text-emerald-600 text-sm font-medium">{t('dashboard.viewAll')}</Text>
+              </Pressable>
+            </View>
+            {goals.map((goal) => (
+              <Pressable
+                key={goal.id}
+                onPress={() => router.push(`/goal/${goal.id}`)}
+                className="mb-3 p-3 bg-slate-50 rounded-xl active:bg-slate-100"
+                accessibilityRole="button"
+                accessibilityLabel={`${goal.name}, ${goal.progress}%`}
+              >
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-row items-center">
+                    <Text className="text-xl mr-2">{goal.icon}</Text>
+                    <Text className="text-slate-700 font-medium">{goal.name}</Text>
+                  </View>
+                  <Text className="text-slate-500 text-xs">{goal.progress}%</Text>
                 </View>
-                <Text className="text-slate-500 text-xs">{goal.progress}%</Text>
-              </View>
-              <View className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                <View
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{ width: `${goal.progress}%` as DimensionValue }}
-                />
-              </View>
-              <View className="flex-row justify-between mt-1.5">
-                <Text className="text-slate-400 text-xs">{currency} {goal.saved.toLocaleString()}</Text>
-                <Text className="text-slate-400 text-xs">{currency} {goal.target.toLocaleString()}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+                <View className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{ width: `${goal.progress}%` as DimensionValue }}
+                  />
+                </View>
+                <View className="flex-row justify-between mt-1.5">
+                  <Text className="text-slate-400 text-xs">{currency} {goal.saved.toLocaleString()}</Text>
+                  <Text className="text-slate-400 text-xs">{currency} {goal.target.toLocaleString()}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* Recent Transactions */}
         <View className="mx-4 mt-4 mb-6 bg-white rounded-2xl p-4">
@@ -145,7 +184,7 @@ export default function DashboardScreen() {
               <Text className="text-emerald-600 text-sm font-medium">{t('dashboard.viewAll')}</Text>
             </Pressable>
           </View>
-          {mockRecentTransactions.map((tx) => (
+          {recentTransactions.map((tx) => (
             <View key={tx.id} className="flex-row items-center justify-between py-3 border-b border-slate-50">
               <View className="flex-row items-center flex-1">
                 <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${tx.type === 'income' ? 'bg-emerald-50' : 'bg-red-50'}`}>
@@ -165,6 +204,9 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ))}
+          {recentTransactions.length === 0 && (
+            <Text className="text-slate-400 text-center py-4">{t('transactions.noTransactions')}</Text>
+          )}
         </View>
       </ScrollView>
     </View>

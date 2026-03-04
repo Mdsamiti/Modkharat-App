@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { AlertCircle, Target, TrendingUp, Info, ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { useApp } from '@/context/AppContext';
-import { mockNotifications } from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { notificationsApi } from '@/services/api';
 import type { NotificationItem } from '@/types/models';
 
 const iconMap: Record<string, any> = {
@@ -18,9 +19,12 @@ export default function NotificationsScreen() {
   const { t } = useTranslation();
   const { language } = useApp();
 
-  const today = mockNotifications.filter((n) => n.time.includes('h ago'));
-  const yesterday = mockNotifications.filter((n) => n.time.includes('1d'));
-  const older = mockNotifications.filter(
+  const { data, isLoading } = useApi(() => notificationsApi.listNotifications(), []);
+  const notifications = data?.data ?? [];
+
+  const today = notifications.filter((n) => n.time.includes('h ago'));
+  const yesterday = notifications.filter((n) => n.time.includes('1d'));
+  const older = notifications.filter(
     (n) => !n.time.includes('h ago') && !n.time.includes('1d')
   );
 
@@ -29,6 +33,11 @@ export default function NotificationsScreen() {
     return (
       <Pressable
         key={item.id}
+        onPress={() => {
+          if (!item.read) {
+            notificationsApi.markRead(item.id);
+          }
+        }}
         className={`flex-row px-4 py-3.5 ${!item.read ? 'bg-blue-50/30' : ''} active:bg-slate-50`}
         style={{ borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
         accessibilityRole="button"
@@ -67,6 +76,17 @@ export default function NotificationsScreen() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        <ScreenHeader title={t('notifications.title')} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <ScreenHeader title={t('notifications.title')} />
@@ -74,6 +94,11 @@ export default function NotificationsScreen() {
         {renderGroup(t('notifications.today'), today)}
         {renderGroup(t('notifications.yesterday'), yesterday)}
         {renderGroup(t('notifications.older'), older)}
+        {notifications.length === 0 && (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="text-slate-400">{language === 'en' ? 'No notifications' : 'لا توجد إشعارات'}</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

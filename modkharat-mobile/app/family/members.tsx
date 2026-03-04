@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Switch } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Switch, ActivityIndicator, Alert } from 'react-native';
 import { Plus, Mail, Phone, Crown, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { useApp } from '@/context/AppContext';
-import { mockFamilyMembers } from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { householdsApi } from '@/services/api';
 
 export default function FamilyMembersScreen() {
   const { t } = useTranslation();
   const { language } = useApp();
 
+  const { data: householdsData } = useApi(() => householdsApi.listHouseholds(), []);
+  const householdId = householdsData?.data?.[0]?.id;
+
+  const { data: membersData, isLoading, refetch } = useApi(
+    () => householdId ? householdsApi.getMembers(householdId) : Promise.resolve({ data: [] }),
+    [householdId],
+  );
+  const members = membersData?.data ?? [];
+
   const [showInvite, setShowInvite] = useState(false);
   const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
   const [inviteValue, setInviteValue] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const permissions = [
     { key: 'viewOnly', label: t('familyMembers.viewOnly') },
@@ -21,12 +32,71 @@ export default function FamilyMembersScreen() {
     { key: 'canManageMembers', label: t('familyMembers.manageMembers') },
   ];
 
+  const handleInvite = async () => {
+    if (!householdId || !inviteValue) return;
+    setIsSending(true);
+    try {
+      await householdsApi.inviteMember(householdId, inviteValue);
+      setShowInvite(false);
+      setInviteValue('');
+      Alert.alert(language === 'en' ? 'Invite sent' : 'تم إرسال الدعوة');
+    } catch (err: any) {
+      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed to send invite');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleRemove = async (memberId: string, memberName: string) => {
+    if (!householdId) return;
+    Alert.alert(
+      t('familyMembers.removeMember'),
+      `${language === 'en' ? 'Remove' : 'إزالة'} ${memberName}?`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('familyMembers.removeMember'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await householdsApi.removeMember(householdId, memberId);
+              refetch();
+            } catch (err: any) {
+              Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handlePermissionChange = async (memberId: string, permKey: string, value: boolean) => {
+    if (!householdId) return;
+    try {
+      await householdsApi.updateMemberPermissions(householdId, memberId, { [permKey]: value });
+      refetch();
+    } catch (err: any) {
+      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        <ScreenHeader title={t('familyMembers.title')} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#3b82f6" />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <ScreenHeader title={t('familyMembers.title')} />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Members */}
-        {mockFamilyMembers.map((member) => (
+        {members.map((member) => (
           <View key={member.id} className="mx-4 mt-4 bg-white rounded-2xl p-4">
             {/* Member Header */}
             <View className="flex-row items-center mb-4">
@@ -63,6 +133,7 @@ export default function FamilyMembersScreen() {
                 <Text className="text-slate-600 text-sm">{perm.label}</Text>
                 <Switch
                   value={member.permissions?.[perm.key as keyof typeof member.permissions] ?? false}
+                  onValueChange={(val) => handlePermissionChange(member.id, perm.key, val)}
                   trackColor={{ false: '#e2e8f0', true: '#6ee7b7' }}
                   thumbColor={member.permissions?.[perm.key as keyof typeof member.permissions] ? '#059669' : '#f4f4f5'}
                   disabled={member.role === 'organizer'}
@@ -73,7 +144,12 @@ export default function FamilyMembersScreen() {
 
             {/* Remove Button (not for organizer) */}
             {member.role !== 'organizer' && (
-              <Pressable className="flex-row items-center justify-center mt-4 py-2.5 rounded-xl active:bg-red-50" accessibilityRole="button" accessibilityLabel={`${t('familyMembers.removeMember')} ${member.name}`}>
+              <Pressable
+                onPress={() => handleRemove(member.id, member.name)}
+                className="flex-row items-center justify-center mt-4 py-2.5 rounded-xl active:bg-red-50"
+                accessibilityRole="button"
+                accessibilityLabel={`${t('familyMembers.removeMember')} ${member.name}`}
+              >
                 <Trash2 size={16} color="#ef4444" />
                 <Text className="text-red-500 font-medium text-sm ml-2">{t('familyMembers.removeMember')}</Text>
               </Pressable>
@@ -147,8 +223,18 @@ export default function FamilyMembersScreen() {
                 >
                   <Text className="text-slate-600 font-medium">{t('common.cancel')}</Text>
                 </Pressable>
-                <Pressable className="flex-1 bg-blue-600 rounded-xl py-3.5 items-center active:bg-blue-700" accessibilityRole="button" accessibilityLabel={t('familyMembers.sendInvite')}>
-                  <Text className="text-white font-semibold">{t('familyMembers.sendInvite')}</Text>
+                <Pressable
+                  onPress={handleInvite}
+                  disabled={isSending}
+                  className={`flex-1 rounded-xl py-3.5 items-center ${isSending ? 'bg-blue-400' : 'bg-blue-600 active:bg-blue-700'}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('familyMembers.sendInvite')}
+                >
+                  {isSending ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="text-white font-semibold">{t('familyMembers.sendInvite')}</Text>
+                  )}
                 </Pressable>
               </View>
             </View>

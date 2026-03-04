@@ -1,22 +1,42 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { Globe, DollarSign, Tag, Bell, Lock, Download, Trash2, ChevronRight } from 'lucide-react-native';
+import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { Globe, DollarSign, Tag, Bell, Lock, Download, Trash2, LogOut, ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { useApp } from '@/context/AppContext';
+import { authApi } from '@/services/api';
 
 const iconMap: Record<string, any> = {
   globe: Globe, dollar: DollarSign, tag: Tag, bell: Bell,
-  lock: Lock, download: Download, trash: Trash2,
+  lock: Lock, download: Download, trash: Trash2, logout: LogOut,
 };
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { language } = useApp();
 
+  const handleSignOut = () => {
+    Alert.alert(
+      language === 'en' ? 'Sign Out' : 'تسجيل الخروج',
+      language === 'en' ? 'Are you sure you want to sign out?' : 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+      [
+        { text: language === 'en' ? 'Cancel' : 'إلغاء', style: 'cancel' },
+        {
+          text: language === 'en' ? 'Sign Out' : 'تسجيل الخروج',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authApi.signOut();
+            } catch {}
+          },
+        },
+      ],
+    );
+  };
+
   const settingsGroups: Array<{
     title: string;
-    items: Array<{ icon: string; label: string; value?: string; danger?: boolean }>;
+    items: Array<{ icon: string; label: string; value?: string; danger?: boolean; action?: string }>;
   }> = [
     {
       title: t('settings.preferences'),
@@ -51,6 +71,12 @@ export default function SettingsScreen() {
         { icon: 'trash', label: t('settings.deleteAccount'), danger: true },
       ],
     },
+    {
+      title: t('settings.account') || (language === 'en' ? 'Account' : 'الحساب'),
+      items: [
+        { icon: 'logout', label: language === 'en' ? 'Sign Out' : 'تسجيل الخروج', danger: true, action: 'signout' },
+      ],
+    },
   ];
 
   return (
@@ -78,6 +104,7 @@ export default function SettingsScreen() {
               return (
                 <Pressable
                   key={item.label}
+                  onPress={item.action === 'signout' ? handleSignOut : undefined}
                   className="flex-row items-center justify-between px-4 py-3.5 active:bg-slate-50"
                   style={idx < group.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' } : undefined}
                   accessibilityRole="button"

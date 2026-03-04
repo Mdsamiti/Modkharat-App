@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   X, ArrowUpRight, ArrowDownRight, Edit3, MessageSquare, Mic, Camera,
-  Check, ArrowLeft, Upload,
+  Check, ArrowLeft,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/context/AppContext';
-import { mockTransactionCategories, mockAccounts } from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { categoriesApi, transactionsApi } from '@/services/api';
 import type { TransactionType, CaptureMethod } from '@/types/models';
 
 export default function AddTransactionScreen() {
@@ -18,19 +19,34 @@ export default function AddTransactionScreen() {
   const insets = useSafeAreaInsets();
   const currency = language === 'en' ? 'SAR' : 'ر.س';
 
+  const { data: catData } = useApi(() => categoriesApi.listCategories(), []);
+  const { data: accData } = useApi(() => categoriesApi.listAccounts(), []);
+
+  const categories = catData?.data ?? [];
+  const accounts = accData?.data ?? [];
+
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
   const [formStep, setFormStep] = useState<'capture' | 'review'>('capture');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Shopping');
+  const [categoryId, setCategoryId] = useState('');
   const [merchant, setMerchant] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [account, setAccount] = useState('main');
+  const [accountId, setAccountId] = useState('');
   const [notes, setNotes] = useState('');
   const [smsText, setSmsText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+
+  // Set default category/account when data loads
+  useEffect(() => {
+    if (categories.length > 0 && !categoryId) setCategoryId(categories[0].id);
+  }, [categories]);
+  useEffect(() => {
+    if (accounts.length > 0 && !accountId) setAccountId(accounts[0].id);
+  }, [accounts]);
 
   const captureMethods = [
     { id: 'manual' as CaptureMethod, icon: Edit3, label: t('addTransaction.manual'), desc: t('addTransaction.manualDesc') },
@@ -43,17 +59,36 @@ export default function AddTransactionScreen() {
     if (captureMethod === 'sms' && smsText) {
       setAmount('245.50');
       setMerchant('Carrefour');
-      setCategory('Shopping');
     } else if (captureMethod === 'voice') {
       setAmount('32.00');
       setMerchant('Starbucks');
-      setCategory('Food & Dining');
     } else if (captureMethod === 'scan') {
       setAmount('189.00');
       setMerchant('Amazon');
-      setCategory('Shopping');
     }
     setFormStep('review');
+  };
+
+  const handleSave = async () => {
+    if (!transactionType || !amount || !merchant) return;
+    setIsSaving(true);
+    try {
+      await transactionsApi.createTransaction({
+        type: transactionType,
+        amount: Number(amount),
+        merchant,
+        categoryId: categoryId || undefined,
+        accountId: accountId || undefined,
+        method: captureMethod || 'manual',
+        notes: notes || undefined,
+        occurredAt: date,
+      });
+      router.back();
+    } catch (err: any) {
+      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed to save');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Step 1: Select type
@@ -198,14 +233,14 @@ export default function AddTransactionScreen() {
             <Text className="text-sm font-medium text-slate-700 mb-1.5">{t('transactionForm.category')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
               <View className="flex-row gap-2">
-                {mockTransactionCategories.map((cat) => (
+                {categories.map((cat) => (
                   <Pressable
-                    key={cat.en}
-                    onPress={() => setCategory(cat.en)}
-                    className={`px-4 py-2 rounded-full ${category === cat.en ? 'bg-emerald-600' : 'bg-slate-100'}`}
+                    key={cat.id}
+                    onPress={() => setCategoryId(cat.id)}
+                    className={`px-4 py-2 rounded-full ${categoryId === cat.id ? 'bg-emerald-600' : 'bg-slate-100'}`}
                   >
-                    <Text className={`text-sm ${category === cat.en ? 'text-white font-medium' : 'text-slate-600'}`}>
-                      {language === 'en' ? cat.en : cat.ar}
+                    <Text className={`text-sm ${categoryId === cat.id ? 'text-white font-medium' : 'text-slate-600'}`}>
+                      {language === 'en' ? cat.nameEn : cat.nameAr}
                     </Text>
                   </Pressable>
                 ))}
@@ -316,14 +351,14 @@ export default function AddTransactionScreen() {
             <Text className="text-sm font-medium text-slate-700 mb-1.5">{t('transactionForm.category')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
               <View className="flex-row gap-2">
-                {mockTransactionCategories.map((cat) => (
+                {categories.map((cat) => (
                   <Pressable
-                    key={cat.en}
-                    onPress={() => setCategory(cat.en)}
-                    className={`px-4 py-2 rounded-full ${category === cat.en ? 'bg-emerald-600' : 'bg-slate-100'}`}
+                    key={cat.id}
+                    onPress={() => setCategoryId(cat.id)}
+                    className={`px-4 py-2 rounded-full ${categoryId === cat.id ? 'bg-emerald-600' : 'bg-slate-100'}`}
                   >
-                    <Text className={`text-sm ${category === cat.en ? 'text-white font-medium' : 'text-slate-600'}`}>
-                      {language === 'en' ? cat.en : cat.ar}
+                    <Text className={`text-sm ${categoryId === cat.id ? 'text-white font-medium' : 'text-slate-600'}`}>
+                      {language === 'en' ? cat.nameEn : cat.nameAr}
                     </Text>
                   </Pressable>
                 ))}
@@ -375,13 +410,20 @@ export default function AddTransactionScreen() {
           </Pressable>
         ) : (
           <Pressable
-            onPress={() => router.back()}
-            className="bg-emerald-600 py-4 rounded-xl items-center flex-row justify-center active:bg-emerald-700"
+            onPress={handleSave}
+            disabled={isSaving}
+            className={`py-4 rounded-xl items-center flex-row justify-center ${isSaving ? 'bg-emerald-400' : 'bg-emerald-600 active:bg-emerald-700'}`}
             accessibilityRole="button"
             accessibilityLabel={t('transactionForm.save')}
           >
-            <Check size={18} color="#ffffff" />
-            <Text className="text-white font-semibold ml-2">{t('transactionForm.save')}</Text>
+            {isSaving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Check size={18} color="#ffffff" />
+                <Text className="text-white font-semibold ml-2">{t('transactionForm.save')}</Text>
+              </>
+            )}
           </Pressable>
         )}
       </View>

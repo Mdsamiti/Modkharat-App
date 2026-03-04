@@ -1,12 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Target, DollarSign, Calendar, Wallet, Sparkles, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
-import { mockGoalPresets, mockAccounts } from '@/services/mock/data';
+import { useApi } from '@/hooks/useApi';
+import { categoriesApi, goalsApi } from '@/services/api';
+
+const goalPresets = [
+  { name: { en: 'Emergency Fund', ar: 'صندوق الطوارئ' }, icon: '🛡️', suggestedAmount: 30000 },
+  { name: { en: 'Umrah Trip', ar: 'رحلة عمرة' }, icon: '🕌', suggestedAmount: 20000 },
+  { name: { en: 'New Car', ar: 'سيارة جديدة' }, icon: '🚗', suggestedAmount: 60000 },
+  { name: { en: 'Home Down Payment', ar: 'دفعة أولى للمنزل' }, icon: '🏠', suggestedAmount: 150000 },
+  { name: { en: 'Wedding', ar: 'زفاف' }, icon: '💍', suggestedAmount: 80000 },
+  { name: { en: 'Education', ar: 'تعليم' }, icon: '🎓', suggestedAmount: 50000 },
+];
 
 export default function NewGoalScreen() {
   const { t } = useTranslation();
@@ -15,11 +25,15 @@ export default function NewGoalScreen() {
   const insets = useSafeAreaInsets();
   const currency = language === 'en' ? 'SAR' : 'ر.س';
 
+  const { data: accData } = useApi(() => categoriesApi.listAccounts(), []);
+  const accounts = accData?.data ?? [];
+
   const [step, setStep] = useState(1);
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [targetDate, setTargetDate] = useState('');
-  const [selectedAccount, setSelectedAccount] = useState('savings');
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const recommendation = useMemo(() => {
     const amount = Number(targetAmount);
@@ -30,8 +44,6 @@ export default function NewGoalScreen() {
     const monthlyAmount = Math.ceil(amount / monthsDiff);
     return { monthlyAmount, monthsDiff, isRealistic: monthlyAmount <= 5000 };
   }, [targetAmount, targetDate]);
-
-  const stepIcons = [Target, DollarSign, Calendar, Wallet];
 
   const canContinue = () => {
     switch (step) {
@@ -52,6 +64,24 @@ export default function NewGoalScreen() {
     const d = new Date();
     d.setMonth(d.getMonth() + months);
     setTargetDate(d.toISOString().split('T')[0]);
+  };
+
+  const handleCreate = async () => {
+    setIsSaving(true);
+    try {
+      await goalsApi.createGoal({
+        name: goalName,
+        target: Number(targetAmount),
+        targetDate: targetDate || undefined,
+        monthlyContribution: recommendation?.monthlyAmount,
+        accountId: selectedAccount || undefined,
+      });
+      router.back();
+    } catch (err: any) {
+      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed to create goal');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -114,7 +144,7 @@ export default function NewGoalScreen() {
 
             <Text className="text-slate-500 text-sm mb-3">{t('newGoal.orChoosePreset')}</Text>
             <View className="flex-row flex-wrap gap-2">
-              {mockGoalPresets.map((preset) => (
+              {goalPresets.map((preset) => (
                 <Pressable
                   key={preset.name.en}
                   onPress={() => {
@@ -178,7 +208,7 @@ export default function NewGoalScreen() {
             <Text className="text-xl font-bold text-slate-800 mb-1">{t('newGoal.step3')}</Text>
             <Text className="text-slate-500 text-sm mb-6">{t('newGoal.selectAccount')}</Text>
 
-            {mockAccounts.map((acc) => (
+            {accounts.map((acc) => (
               <Pressable
                 key={acc.id}
                 onPress={() => setSelectedAccount(acc.id)}
@@ -186,7 +216,7 @@ export default function NewGoalScreen() {
                   selectedAccount === acc.id ? 'bg-emerald-50 border-2 border-emerald-600' : 'bg-white border border-slate-200'
                 }`}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'en' ? acc.name.en : acc.name.ar}
+                accessibilityLabel={language === 'en' ? acc.nameEn : acc.nameAr}
               >
                 <View className={`w-5 h-5 rounded-full border-2 mr-3 items-center justify-center ${
                   selectedAccount === acc.id ? 'border-emerald-600' : 'border-slate-300'
@@ -194,7 +224,7 @@ export default function NewGoalScreen() {
                   {selectedAccount === acc.id && <View className="w-2.5 h-2.5 bg-emerald-600 rounded-full" />}
                 </View>
                 <Text className={`font-medium ${selectedAccount === acc.id ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  {language === 'en' ? acc.name.en : acc.name.ar}
+                  {language === 'en' ? acc.nameEn : acc.nameAr}
                 </Text>
               </Pressable>
             ))}
@@ -233,8 +263,8 @@ export default function NewGoalScreen() {
                 {
                   label: t('newGoal.selectAccount'),
                   value: (() => {
-                    const acc = mockAccounts.find((a) => a.id === selectedAccount);
-                    return acc ? (language === 'en' ? acc.name.en : acc.name.ar) : '';
+                    const acc = accounts.find((a) => a.id === selectedAccount);
+                    return acc ? (language === 'en' ? acc.nameEn : acc.nameAr) : '';
                   })(),
                 },
               ].map((row, idx) => (
@@ -268,16 +298,20 @@ export default function NewGoalScreen() {
           <Pressable
             onPress={() => {
               if (step < 4) setStep(step + 1);
-              else router.back();
+              else handleCreate();
             }}
-            className={`flex-1 py-4 rounded-xl items-center ${canContinue() ? 'bg-emerald-600 active:bg-emerald-700' : 'bg-slate-200'}`}
-            disabled={!canContinue()}
+            disabled={!canContinue() || isSaving}
+            className={`flex-1 py-4 rounded-xl items-center ${canContinue() && !isSaving ? 'bg-emerald-600 active:bg-emerald-700' : 'bg-slate-200'}`}
             accessibilityRole="button"
             accessibilityLabel={step < 4 ? t('newGoal.next') : t('newGoal.createGoal')}
           >
-            <Text className={`font-semibold ${canContinue() ? 'text-white' : 'text-slate-400'}`}>
-              {step < 4 ? t('newGoal.next') : t('newGoal.createGoal')}
-            </Text>
+            {isSaving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className={`font-semibold ${canContinue() ? 'text-white' : 'text-slate-400'}`}>
+                {step < 4 ? t('newGoal.next') : t('newGoal.createGoal')}
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>

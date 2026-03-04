@@ -14,18 +14,19 @@ export { ErrorBoundary } from 'expo-router';
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, isLoading } = useApp();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
+    if (isLoading) return; // Wait for auth state to resolve
     const inAuthGroup = segments[0] === '(auth)';
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments]);
+  }, [isAuthenticated, isLoading, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
