@@ -25,7 +25,10 @@
       "passwordMin": "Password must be at least 8 characters",
       "nameRequired": "Name is required",
       "passwordMismatch": "Passwords do not match",
-      "termsRequired": "You must agree to the terms"
+      "termsRequired": "You must agree to the terms",
+      "generic": "Something went wrong. Please try again.",
+      "signInFailed": "Sign In Failed",
+      "signUpFailed": "Sign Up Failed"
     }
   },
   "tabs": {

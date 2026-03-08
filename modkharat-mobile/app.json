@@ -49,7 +49,10 @@
           "photosPermission": "Allow Modkharat to access your photos to select receipt images.",
           "cameraPermission": "Allow Modkharat to access your camera to scan receipts."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
