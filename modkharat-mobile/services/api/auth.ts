@@ -9,11 +9,11 @@ export async function signIn(email: string, password: string) {
 }
 
 /** Sign up with email/password via Supabase Auth */
-export async function signUp(email: string, password: string, displayName: string) {
+export async function signUp(email: string, password: string, displayName: string, phone?: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { display_name: displayName } },
+    options: { data: { display_name: displayName, phone } },
   });
   if (error) throw error;
   return data;
