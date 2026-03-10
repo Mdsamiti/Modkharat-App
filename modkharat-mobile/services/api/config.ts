@@ -5,10 +5,20 @@
  */
 import { Platform } from 'react-native';
 
-const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+import Constants from 'expo-constants';
+
+// For physical devices, use the Expo dev server host IP (same network).
+// For emulators: Android uses 10.0.2.2, iOS simulator uses localhost.
+function getDevHost(): string {
+  const debuggerHost = Constants.expoConfig?.hostUri ?? Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  if (debuggerHost) {
+    return debuggerHost.split(':')[0]; // Extract IP from "192.168.x.x:8081"
+  }
+  return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+}
 
 export const API_BASE_URL = __DEV__
-  ? `http://${DEV_HOST}:3000`
+  ? `http://${getDevHost()}:3000`
   : 'https://modkharat-app-production.up.railway.app';
 
 export const SUPABASE_URL = 'https://zihwdatecsxxbeewurko.supabase.co';
