@@ -139,7 +139,7 @@ export default function AddTransactionScreen() {
         accountId: accountId || undefined,
         method: captureMethod || 'manual',
         notes: notes || undefined,
-        occurredAt: date,
+        occurredAt: new Date(date).toISOString(),
       });
       router.back();
     } catch (err: any) {
