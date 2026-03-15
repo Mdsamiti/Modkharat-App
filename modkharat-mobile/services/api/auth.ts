@@ -36,6 +36,7 @@ export async function updateProfile(fields: {
   avatarEmoji?: string;
   language?: 'en' | 'ar';
   timezone?: string;
+  firstDayOfMonth?: number;
 }) {
   return patch<{ data: ProfileDTO }>('/v1/auth/me', fields);
 }
@@ -47,4 +48,5 @@ interface ProfileDTO {
   email: string;
   language: 'en' | 'ar';
   timezone: string;
+  firstDayOfMonth: number;
 }

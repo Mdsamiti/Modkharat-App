@@ -22,7 +22,7 @@ const updateSchema = z.object({
 
 router.get('/', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const budgets = await budgetsService.listBudgets(req.householdId!);
+    const budgets = await budgetsService.listBudgets(req.householdId!, req.userId!);
     res.json({ data: budgets });
   } catch (err) { next(err); }
 });
@@ -42,7 +42,7 @@ router.post(
 
 router.get('/:id', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const budget = await budgetsService.getBudget(req.params.id as string, req.householdId!);
+    const budget = await budgetsService.getBudget(req.params.id as string, req.householdId!, req.userId!);
     res.json({ data: budget });
   } catch (err) { next(err); }
 });
@@ -69,14 +69,14 @@ router.delete('/:id', requireHousehold, requirePermission('canEditBudgets'), asy
 
 router.get('/:id/transactions', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const transactions = await budgetsService.getBudgetTransactions(req.params.id as string, req.householdId!);
+    const transactions = await budgetsService.getBudgetTransactions(req.params.id as string, req.householdId!, req.userId!);
     res.json({ data: transactions });
   } catch (err) { next(err); }
 });
 
 router.get('/:id/comparison', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const comparison = await budgetsService.getBudgetComparison(req.params.id as string, req.householdId!);
+    const comparison = await budgetsService.getBudgetComparison(req.params.id as string, req.householdId!, req.userId!);
     res.json({ data: comparison });
   } catch (err) { next(err); }
 });

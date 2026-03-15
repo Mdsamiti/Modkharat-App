@@ -81,7 +81,7 @@ export default function SignInScreen() {
               <Text className="text-white text-3xl font-bold">م</Text>
             </View>
             <Text className="text-2xl font-bold text-slate-800">
-              {language === 'en' ? 'Modkharat' : 'مدخراتي'}
+              {language === 'en' ? 'Modkharat' : 'مدخرات'}
             </Text>
           </View>
 

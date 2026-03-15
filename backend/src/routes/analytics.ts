@@ -6,14 +6,14 @@ const router = Router();
 
 router.get('/overview', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const overview = await analyticsService.getOverview(req.householdId!);
+    const overview = await analyticsService.getOverview(req.householdId!, req.userId!);
     res.json({ data: overview });
   } catch (err) { next(err); }
 });
 
 router.get('/spending-by-category', requireHousehold, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await analyticsService.getSpendingByCategory(req.householdId!);
+    const data = await analyticsService.getSpendingByCategory(req.householdId!, req.userId!);
     res.json({ data });
   } catch (err) { next(err); }
 });

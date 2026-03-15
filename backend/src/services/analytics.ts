@@ -1,9 +1,35 @@
 import * as txRepo from '../repositories/transactions.js';
+import * as profilesRepo from '../repositories/profiles.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 
 const ANALYTICS_TTL = 60 * 1000; // 1 minute
 
-export async function getOverview(householdId: string) {
+function getPeriodBounds(firstDay: number): { monthStart: string; monthEnd: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  let start: Date;
+  if (day >= firstDay) {
+    start = new Date(year, month, firstDay);
+  } else {
+    start = new Date(year, month - 1, firstDay);
+  }
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, firstDay - 1, 23, 59, 59);
+
+  return {
+    monthStart: start.toISOString(),
+    monthEnd: end.toISOString(),
+  };
+}
+
+async function getFirstDay(userId: string): Promise<number> {
+  const profile = await profilesRepo.findProfileById(userId);
+  return profile?.first_day_of_month ?? 1;
+}
+
+export async function getOverview(householdId: string, userId: string) {
   const cacheKey = `analytics:overview:${householdId}`;
   const cached = cacheGet<{ income: number; expenses: number; savingsRate: number }>(cacheKey);
   if (cached) return cached;
@@ -19,14 +45,13 @@ export async function getOverview(householdId: string) {
   return result;
 }
 
-export async function getSpendingByCategory(householdId: string) {
+export async function getSpendingByCategory(householdId: string, userId: string) {
   const cacheKey = `analytics:category:${householdId}`;
   const cached = cacheGet<any[]>(cacheKey);
   if (cached) return cached;
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+  const firstDay = await getFirstDay(userId);
+  const { monthStart, monthEnd } = getPeriodBounds(firstDay);
 
   const rows = await txRepo.getSpendingByCategory(householdId, monthStart, monthEnd);
   const result = rows.map((r) => ({

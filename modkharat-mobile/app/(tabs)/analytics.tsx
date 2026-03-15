@@ -172,9 +172,9 @@ export default function AnalyticsScreen() {
             );
           })}
 
-          <Pressable className="border-2 border-dashed border-slate-200 rounded-xl py-4 items-center flex-row justify-center" accessibilityRole="button" accessibilityLabel={t('analytics.createBudget')}>
-            <Plus size={18} color="#94a3b8" />
-            <Text className="text-slate-400 font-medium ml-2">{t('analytics.createBudget')}</Text>
+          <Pressable onPress={() => router.push('/budget/new')} className="border-2 border-dashed border-emerald-300 rounded-xl py-4 items-center flex-row justify-center" accessibilityRole="button" accessibilityLabel={t('analytics.createBudget')}>
+            <Plus size={18} color="#059669" />
+            <Text className="text-emerald-600 font-medium ml-2">{t('analytics.createBudget')}</Text>
           </Pressable>
         </View>
       </ScrollView>

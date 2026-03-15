@@ -12,7 +12,24 @@ export interface BudgetRow {
   spent: string;
 }
 
-export async function findBudgetsByHousehold(householdId: string): Promise<BudgetRow[]> {
+/**
+ * Returns SQL expression for the start of the current custom month.
+ * If today >= firstDay, period starts on firstDay of this calendar month.
+ * If today < firstDay, period starts on firstDay of last calendar month.
+ */
+function periodStartExpr(paramIdx: number): string {
+  return `CASE
+    WHEN EXTRACT(DAY FROM now()) >= $${paramIdx}
+    THEN date_trunc('month', now()) + (($${paramIdx} - 1) || ' days')::interval
+    ELSE date_trunc('month', now()) - INTERVAL '1 month' + (($${paramIdx} - 1) || ' days')::interval
+  END`;
+}
+
+function periodEndExpr(paramIdx: number): string {
+  return `${periodStartExpr(paramIdx)} + INTERVAL '1 month'`;
+}
+
+export async function findBudgetsByHousehold(householdId: string, firstDayOfMonth: number = 1): Promise<BudgetRow[]> {
   const result = await query<BudgetRow>(
     `SELECT b.*,
        COALESCE(
@@ -23,19 +40,19 @@ export async function findBudgetsByHousehold(householdId: string): Promise<Budge
             AND t.type = 'expense'
             AND t.status = 'confirmed'
             AND t.deleted_at IS NULL
-            AND t.occurred_at >= date_trunc('month', now())
-            AND t.occurred_at < date_trunc('month', now()) + INTERVAL '1 month'
+            AND t.occurred_at >= ${periodStartExpr(2)}
+            AND t.occurred_at < ${periodEndExpr(2)}
          ), 0
        ) AS spent
      FROM budgets b
      WHERE b.household_id = $1
      ORDER BY b.created_at ASC`,
-    [householdId],
+    [householdId, firstDayOfMonth],
   );
   return result.rows;
 }
 
-export async function findBudgetById(id: string, householdId: string): Promise<BudgetRow | null> {
+export async function findBudgetById(id: string, householdId: string, firstDayOfMonth: number = 1): Promise<BudgetRow | null> {
   const result = await query<BudgetRow>(
     `SELECT b.*,
        COALESCE(
@@ -46,13 +63,13 @@ export async function findBudgetById(id: string, householdId: string): Promise<B
             AND t.type = 'expense'
             AND t.status = 'confirmed'
             AND t.deleted_at IS NULL
-            AND t.occurred_at >= date_trunc('month', now())
-            AND t.occurred_at < date_trunc('month', now()) + INTERVAL '1 month'
+            AND t.occurred_at >= ${periodStartExpr(3)}
+            AND t.occurred_at < ${periodEndExpr(3)}
          ), 0
        ) AS spent
      FROM budgets b
      WHERE b.id = $1 AND b.household_id = $2`,
-    [id, householdId],
+    [id, householdId, firstDayOfMonth],
   );
   return result.rows[0] ?? null;
 }

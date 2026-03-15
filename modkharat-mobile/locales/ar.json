@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "مدخراتي",
+    "name": "مدخرات",
     "currency": "ر.س"
   },
   "auth": {
@@ -117,6 +117,9 @@
     "preferences": "التفضيلات",
     "language": "اللغة",
     "currency": "العملة",
+    "firstDayOfMonth": "أول يوم في الشهر",
+    "selectFirstDay": "اختر أول يوم في الشهر",
+    "firstDayHint": "سيتم إعادة تعيين الميزانيات والتحليلات في هذا اليوم من كل شهر",
     "financialData": "البيانات المالية",
     "accounts": "الحسابات المرتبطة",
     "categories": "الفئات",
@@ -179,7 +182,30 @@
     "onTrack": "على المسار للبقاء ضمن الميزانية",
     "overBudget": "قد تتجاوز الميزانية بنهاية الشهر",
     "comparison": "المقارنة الشهرية",
-    "recentTransactions": "المعاملات الأخيرة"
+    "recentTransactions": "المعاملات الأخيرة",
+    "editBudget": "تعديل الميزانية",
+    "deleteBudget": "حذف الميزانية",
+    "deleteConfirm": "هل أنت متأكد من حذف هذه الميزانية؟",
+    "deleted": "تم حذف الميزانية"
+  },
+  "budgetForm": {
+    "createTitle": "ميزانية جديدة",
+    "editTitle": "تعديل الميزانية",
+    "budgetName": "اسم الميزانية",
+    "budgetNamePlaceholder": "مثال: البقالة، الترفيه",
+    "limitAmount": "حد الميزانية",
+    "category": "الفئة",
+    "selectCategory": "اختر فئة",
+    "noCategory": "بدون فئة محددة",
+    "period": "الفترة",
+    "weekly": "أسبوعي",
+    "monthly": "شهري",
+    "yearly": "سنوي",
+    "createBudget": "إنشاء الميزانية",
+    "updateBudget": "تحديث الميزانية",
+    "nameRequired": "اسم الميزانية مطلوب",
+    "amountRequired": "حد الميزانية مطلوب",
+    "amountInvalid": "يرجى إدخال مبلغ صحيح"
   },
   "goalDetail": {
     "saved": "المُدخر",

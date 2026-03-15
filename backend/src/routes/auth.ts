@@ -10,6 +10,7 @@ const updateProfileSchema = z.object({
   avatarEmoji: z.string().max(10).optional(),
   language: z.enum(['en', 'ar']).optional(),
   timezone: z.string().max(50).optional(),
+  firstDayOfMonth: z.number().int().min(1).max(28).optional(),
 }).strict();
 
 router.get('/me', async (req: Request, res: Response, next: NextFunction) => {

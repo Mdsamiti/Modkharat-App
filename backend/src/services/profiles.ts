@@ -18,18 +18,20 @@ export async function getProfile(userId: string): Promise<ProfileDTO> {
     email: data.user?.email ?? '',
     language: profile.language as 'en' | 'ar',
     timezone: profile.timezone,
+    firstDayOfMonth: profile.first_day_of_month ?? 1,
   };
 }
 
 export async function updateProfile(
   userId: string,
-  fields: { displayName?: string; avatarEmoji?: string; language?: string; timezone?: string },
+  fields: { displayName?: string; avatarEmoji?: string; language?: string; timezone?: string; firstDayOfMonth?: number },
 ): Promise<ProfileDTO> {
   await profilesRepo.updateProfile(userId, {
     display_name: fields.displayName,
     avatar_emoji: fields.avatarEmoji,
     language: fields.language,
     timezone: fields.timezone,
+    first_day_of_month: fields.firstDayOfMonth,
   });
   return getProfile(userId);
 }

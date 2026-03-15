@@ -6,6 +6,7 @@ export interface ProfileRow {
   avatar_emoji: string;
   language: string;
   timezone: string;
+  first_day_of_month: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -20,7 +21,7 @@ export async function findProfileById(userId: string): Promise<ProfileRow | null
 
 export async function updateProfile(
   userId: string,
-  fields: Partial<Pick<ProfileRow, 'display_name' | 'avatar_emoji' | 'language' | 'timezone'>>,
+  fields: Partial<Pick<ProfileRow, 'display_name' | 'avatar_emoji' | 'language' | 'timezone' | 'first_day_of_month'>>,
 ): Promise<ProfileRow | null> {
   const sets: string[] = [];
   const values: any[] = [];

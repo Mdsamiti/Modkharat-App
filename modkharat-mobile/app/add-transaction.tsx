@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   X, ArrowUpRight, ArrowDownRight, Edit3, MessageSquare, Mic, Camera,
-  Check, ArrowLeft, ImageIcon,
+  Check, ArrowLeft, ImageIcon, Wallet,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/context/AppContext';
@@ -18,6 +18,7 @@ export default function AddTransactionScreen() {
   const { t } = useTranslation();
   const { language } = useApp();
   const router = useRouter();
+  const params = useLocalSearchParams<{ presetAccountId?: string; presetType?: string }>();
   const insets = useSafeAreaInsets();
   const currency = language === 'en' ? 'SAR' : 'ر.س';
 
@@ -27,7 +28,9 @@ export default function AddTransactionScreen() {
   const categories = catData?.data ?? [];
   const accounts = accData?.data ?? [];
 
-  const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
+  const [transactionType, setTransactionType] = useState<TransactionType | null>(
+    params.presetType === 'income' || params.presetType === 'expense' ? params.presetType : null,
+  );
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
   const [formStep, setFormStep] = useState<'capture' | 'review'>('capture');
   const [isSaving, setIsSaving] = useState(false);
@@ -51,7 +54,9 @@ export default function AddTransactionScreen() {
     if (categories.length > 0 && !categoryId) setCategoryId(categories[0].id);
   }, [categories]);
   useEffect(() => {
-    if (accounts.length > 0 && !accountId) setAccountId(accounts[0].id);
+    if (accounts.length > 0 && !accountId && params.presetAccountId) {
+      setAccountId(params.presetAccountId);
+    }
   }, [accounts]);
 
   const captureMethods = [
@@ -191,12 +196,65 @@ export default function AddTransactionScreen() {
     );
   }
 
-  // Step 2: Select capture method
-  if (!captureMethod) {
+  // Step 2: Select account
+  if (!accountId) {
     return (
       <View className="flex-1 bg-white">
         <View style={{ paddingTop: insets.top }} className="px-4 pb-3 flex-row items-center">
           <Pressable onPress={() => setTransactionType(null)} className="p-2 -ml-2 mr-2" hitSlop={8} accessibilityRole="button" accessibilityLabel="Back" style={{ minHeight: 44 }}>
+            <ArrowLeft size={22} color="#1e293b" />
+          </Pressable>
+          <Text className="text-lg font-bold text-slate-800">{t('addTransaction.title')}</Text>
+          <View className="flex-1" />
+          <Pressable onPress={() => router.back()} className="p-2" hitSlop={8} accessibilityRole="button" accessibilityLabel="Close" style={{ minHeight: 44 }}>
+            <X size={22} color="#1e293b" />
+          </Pressable>
+        </View>
+
+        <View className="flex-1 px-4 pt-6">
+          <Text className="text-slate-500 text-center mb-8">
+            {language === 'en' ? 'Select account' : 'اختر الحساب'}
+          </Text>
+          {accounts.map((acc) => (
+            <Pressable
+              key={acc.id}
+              onPress={() => setAccountId(acc.id)}
+              className="bg-slate-50 rounded-2xl p-4 mb-3 flex-row items-center active:bg-emerald-50"
+              accessibilityRole="button"
+              accessibilityLabel={language === 'en' ? acc.nameEn : acc.nameAr}
+            >
+              <View className="w-12 h-12 bg-emerald-100 rounded-full items-center justify-center mr-4">
+                <Wallet size={22} color="#059669" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-slate-800 font-medium text-base">
+                  {language === 'en' ? acc.nameEn : acc.nameAr}
+                </Text>
+                <Text className="text-slate-400 text-xs">
+                  {currency} {acc.balance.toLocaleString()}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+          {accounts.length === 0 && (
+            <View className="items-center py-8">
+              <Wallet size={40} color="#cbd5e1" />
+              <Text className="text-slate-400 mt-3 text-center">
+                {language === 'en' ? 'No accounts yet.\nCreate one in Settings > Linked Accounts.' : 'لا توجد حسابات بعد.\nأنشئ واحداً من الإعدادات > الحسابات.'}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  // Step 3: Select capture method
+  if (!captureMethod) {
+    return (
+      <View className="flex-1 bg-white">
+        <View style={{ paddingTop: insets.top }} className="px-4 pb-3 flex-row items-center">
+          <Pressable onPress={() => setAccountId('')} className="p-2 -ml-2 mr-2" hitSlop={8} accessibilityRole="button" accessibilityLabel="Back" style={{ minHeight: 44 }}>
             <ArrowLeft size={22} color="#1e293b" />
           </Pressable>
           <Text className="text-lg font-bold text-slate-800">{t('addTransaction.title')}</Text>
@@ -299,6 +357,23 @@ export default function AddTransactionScreen() {
                   >
                     <Text className={`text-sm ${categoryId === cat.id ? 'text-white font-medium' : 'text-slate-600'}`}>
                       {language === 'en' ? cat.nameEn : cat.nameAr}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text className="text-sm font-medium text-slate-700 mb-1.5">{t('transactionForm.account')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <View className="flex-row gap-2">
+                {accounts.map((acc) => (
+                  <Pressable
+                    key={acc.id}
+                    onPress={() => setAccountId(acc.id)}
+                    className={`px-4 py-2 rounded-full ${accountId === acc.id ? 'bg-emerald-600' : 'bg-slate-100'}`}
+                  >
+                    <Text className={`text-sm ${accountId === acc.id ? 'text-white font-medium' : 'text-slate-600'}`}>
+                      {language === 'en' ? acc.nameEn : acc.nameAr}
                     </Text>
                   </Pressable>
                 ))}
@@ -486,6 +561,23 @@ export default function AddTransactionScreen() {
                   >
                     <Text className={`text-sm ${categoryId === cat.id ? 'text-white font-medium' : 'text-slate-600'}`}>
                       {language === 'en' ? cat.nameEn : cat.nameAr}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text className="text-sm font-medium text-slate-700 mb-1.5">{t('transactionForm.account')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <View className="flex-row gap-2">
+                {accounts.map((acc) => (
+                  <Pressable
+                    key={acc.id}
+                    onPress={() => setAccountId(acc.id)}
+                    className={`px-4 py-2 rounded-full ${accountId === acc.id ? 'bg-emerald-600' : 'bg-slate-100'}`}
+                  >
+                    <Text className={`text-sm ${accountId === acc.id ? 'text-white font-medium' : 'text-slate-600'}`}>
+                      {language === 'en' ? acc.nameEn : acc.nameAr}
                     </Text>
                   </Pressable>
                 ))}

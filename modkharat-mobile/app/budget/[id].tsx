@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import type { DimensionValue } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AlertCircle } from 'lucide-react-native';
+import { AlertCircle, Pencil, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { useApp } from '@/context/AppContext';
@@ -14,6 +14,7 @@ export default function BudgetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const { language } = useApp();
+  const router = useRouter();
   const currency = language === 'en' ? 'SAR' : 'ر.س';
 
   const { data: budgetRes, isLoading: l1 } = useApi(() => budgetsApi.getBudget(id!), [id]);
@@ -122,6 +123,48 @@ export default function BudgetDetailScreen() {
             ))}
           </View>
         )}
+
+        {/* Edit & Delete */}
+        <View className="mx-4 mt-4 flex-row gap-3">
+          <Pressable
+            onPress={() => router.push({ pathname: '/budget/new', params: { editId: id, editName: budget.name, editLimit: String(budget.limit), editPeriod: budget.period ?? 'monthly' } })}
+            className="flex-1 bg-white rounded-2xl py-3.5 flex-row items-center justify-center active:bg-slate-50"
+            accessibilityRole="button"
+            accessibilityLabel={t('budgetDetail.editBudget')}
+          >
+            <Pencil size={16} color="#059669" />
+            <Text className="text-emerald-600 font-medium text-sm ml-2">{t('budgetDetail.editBudget')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                t('budgetDetail.deleteBudget'),
+                t('budgetDetail.deleteConfirm'),
+                [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  {
+                    text: t('common.delete'),
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await budgetsApi.deleteBudget(id!);
+                        router.back();
+                      } catch (err: any) {
+                        Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed');
+                      }
+                    },
+                  },
+                ],
+              );
+            }}
+            className="flex-1 bg-white rounded-2xl py-3.5 flex-row items-center justify-center active:bg-red-50"
+            accessibilityRole="button"
+            accessibilityLabel={t('budgetDetail.deleteBudget')}
+          >
+            <Trash2 size={16} color="#ef4444" />
+            <Text className="text-red-500 font-medium text-sm ml-2">{t('budgetDetail.deleteBudget')}</Text>
+          </Pressable>
+        </View>
 
         {/* Recent Transactions */}
         <View className="mx-4 mt-4 mb-6 bg-white rounded-2xl p-4">

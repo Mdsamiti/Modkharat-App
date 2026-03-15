@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { I18nManager } from 'react-native';
 import type { Language } from '@/types/models';
 import { supabase } from '@/services/api/supabase';
-import { householdsApi } from '@/services/api';
+import { householdsApi, authApi } from '@/services/api';
 
 interface AppContextType {
   language: Language;
@@ -10,8 +10,10 @@ interface AppContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   householdId: string | null;
+  firstDayOfMonth: number;
   toggleLanguage: () => void;
   setAuthenticated: (value: boolean) => void;
+  setFirstDayOfMonth: (day: number) => void;
 }
 
 const AppContext = createContext<AppContextType>({
@@ -20,8 +22,10 @@ const AppContext = createContext<AppContextType>({
   isAuthenticated: false,
   isLoading: true,
   householdId: null,
+  firstDayOfMonth: 1,
   toggleLanguage: () => {},
   setAuthenticated: () => {},
+  setFirstDayOfMonth: () => {},
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -29,6 +33,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [firstDayOfMonth, setFirstDayOfMonth] = useState(1);
 
   const isRTL = language === 'ar';
 
@@ -67,12 +72,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // When authenticated, ensure a household exists
+  // Load user preferences from profile
+  const loadPreferences = useCallback(async () => {
+    try {
+      const res = await authApi.getProfile();
+      if (res.data?.firstDayOfMonth) {
+        setFirstDayOfMonth(res.data.firstDayOfMonth);
+      }
+    } catch {
+      // Silently fail
+    }
+  }, []);
+
+  // When authenticated, ensure a household exists and load preferences
   useEffect(() => {
     if (isAuthenticated) {
       ensureHousehold();
+      loadPreferences();
     }
-  }, [isAuthenticated, ensureHousehold]);
+  }, [isAuthenticated, ensureHousehold, loadPreferences]);
 
   const toggleLanguage = useCallback(() => {
     setLanguage((prev) => {
@@ -87,7 +105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider
-      value={{ language, isRTL, isAuthenticated, isLoading, householdId, toggleLanguage, setAuthenticated }}
+      value={{ language, isRTL, isAuthenticated, isLoading, householdId, firstDayOfMonth, toggleLanguage, setAuthenticated, setFirstDayOfMonth }}
     >
       {children}
     </AppContext.Provider>

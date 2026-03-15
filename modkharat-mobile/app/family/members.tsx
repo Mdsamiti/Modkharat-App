@@ -31,7 +31,7 @@ export default function FamilyMembersScreen() {
 
   const handleWhatsAppInvite = () => {
     const message = language === 'ar'
-      ? `🏠 تمت دعوتك للانضمام إلى "${householdName}" على تطبيق مدخراتي!\n\nحمّل التطبيق وسجّل بنفس البريد الإلكتروني للانضمام إلى العائلة.`
+      ? `🏠 تمت دعوتك للانضمام إلى "${householdName}" على تطبيق مدخرات!\n\nحمّل التطبيق وسجّل بنفس البريد الإلكتروني للانضمام إلى العائلة.`
       : `🏠 You've been invited to join "${householdName}" on Modkharat!\n\nDownload the app and sign up with the same email to join the family.`;
 
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;

@@ -125,6 +125,7 @@ export interface AccountDTO {
   id: string;
   nameEn: string;
   nameAr: string;
+  balance: number;
 }
 
 export interface ProfileDTO {
@@ -134,6 +135,7 @@ export interface ProfileDTO {
   email: string;
   language: 'en' | 'ar';
   timezone: string;
+  firstDayOfMonth: number;
 }
 
 // ============================================================
