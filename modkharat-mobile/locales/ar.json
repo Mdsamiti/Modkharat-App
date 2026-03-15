@@ -229,8 +229,9 @@
     "manageMembers": "إدارة الأعضاء",
     "removeMember": "إزالة العضو",
     "inviteMember": "دعوة عضو",
+    "inviteByEmail": "دعوة عبر البريد",
+    "inviteByWhatsApp": "دعوة عبر واتساب",
     "email": "البريد الإلكتروني",
-    "phone": "الهاتف",
     "sendInvite": "إرسال الدعوة"
   },
   "common": {

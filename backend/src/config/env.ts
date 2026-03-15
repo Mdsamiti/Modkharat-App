@@ -14,11 +14,6 @@ const envSchema = z.object({
   GOOGLE_CLOUD_PROJECT: z.string().optional(),
   GOOGLE_CLOUD_KEY_JSON: z.string().optional(), // Base64-encoded service account JSON
 
-  // Phase 2: Twilio (SMS)
-  TWILIO_ACCOUNT_SID: z.string().optional(),
-  TWILIO_AUTH_TOKEN: z.string().optional(),
-  TWILIO_FROM_NUMBER: z.string().optional(),
-
   // Phase 2: Worker
   WORKER_CONCURRENCY: z.coerce.number().default(5),
 });

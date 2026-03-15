@@ -105,13 +105,12 @@
 - [x] Link generated draft to source transcript and ingestion job.
 - [x] Add timeout/retry policy and clear error mapping for failed transcriptions.
 
-## 9. SMS Integration (Parse + Send via Twilio) — *Done (Phase 2)*
+## 9. SMS Parsing + Family Invites — *Done (Phase 2, Twilio removed)*
 - [x] Add endpoint `/v1/import/sms` to parse pasted bank SMS text into draft transaction.
 - [x] Add `sms_bank_patterns` seed/config to improve parsing accuracy by bank format.
 - [x] Store raw SMS, parser result, and confidence for audit/debug.
-- [x] Add outbound SMS service for family invites and optional critical alerts.
-- [x] Add webhook endpoint `/v1/webhooks/twilio/status` for delivery status tracking.
-- [x] Validate Twilio signatures and enforce webhook replay protection.
+- [x] Family invites via WhatsApp sharing (replaced Twilio SMS). Frontend opens WhatsApp with pre-filled invite message.
+- [x] Removed Twilio dependency, webhook endpoint, and environment variables.
 
 ## 10. Async Job System — *Done (Phase 2)*
 - [x] Use `pg-boss` with Supabase Postgres for queueing (no extra Redis dependency).
@@ -129,11 +128,11 @@
 - [x] Performance tests for transaction list and analytics endpoints using realistic dataset volumes.
 
 ## 12. Deployment, CI/CD, and Operations
-- [ ] Deploy API and worker as two Railway services from same repo. *(Ops — needs Railway account)*
-- [ ] Keep Supabase as managed Postgres/Auth/Storage backend. *(Ops)*
-- [ ] Configure environments: `dev`, `staging`, `prod` with separate Supabase projects. *(Ops)*
-- [x] CI pipeline: install -> lint -> typecheck -> tests -> build -> deploy staging -> approval gate -> deploy prod.
-- [ ] Run migrations in CI/CD before app boot; block deploy on migration failure. *(Ops — needs CI pipeline config)*
+- [x] Deploy API and worker as two Railway services from same repo.
+- [x] Keep Supabase as managed Postgres/Auth/Storage backend.
+- [ ] Configure environments: `dev`, `staging`, `prod` with separate Supabase projects. *(Ops — not urgent)*
+- [x] CI pipeline: install -> lint -> typecheck -> tests -> build -> deploy staging -> approval gate -> deploy prod. *(GitHub Actions + Railway auto-deploy on push)*
+- [ ] Run migrations in CI/CD before app boot; block deploy on migration failure. *(Ops — not urgent)*
 - [x] Add observability: structured logs, request tracing, error monitoring (Sentry), uptime checks.
 - [ ] Add runbooks for provider outage, DB incident, and failed job backlog recovery. *(Ops — post-deployment)*
 
@@ -161,10 +160,35 @@
 - [x] Notification `mark-read` and `mark-all-read` update only current user records.
 - [x] Account deletion/export flows are auditable and permission-protected.
 
-## 15. Assumptions and Defaults Chosen
+## 15. AI & Third-Party API Setup
+
+### Google Cloud — OCR (Receipt Scanning) & Voice Input
+- [x] Backend implementation: `src/lib/ocr.ts` uses `@google-cloud/vision` for receipt text extraction.
+- [x] Backend implementation: `src/lib/speech.ts` uses `@google-cloud/speech` for voice transcription (supports `ar-SA` and `en-US`).
+- [x] Async job processing: OCR and Voice jobs are queued via `pg-boss` and processed by the worker (`src/jobs/ocr-handler.ts`, `src/jobs/voice-handler.ts`).
+- [x] Receipt parser: `src/lib/parsers/receipt-parser.ts` extracts merchant, amount, date, currency from OCR text.
+- [x] Voice parser: `src/lib/parsers/voice-parser.ts` extracts transaction details from transcribed speech.
+- [ ] **Google Cloud account setup** — Create a Google Cloud project, enable Vision API and Speech-to-Text API, and create a service account with JSON key.
+- [ ] **Environment variables** — Set `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_KEY_JSON` (Base64-encoded service account JSON) in Railway and `.env`.
+
+### Family Invites — WhatsApp (Replaced Twilio)
+- [x] Twilio removed — no paid SMS service needed.
+- [x] Family invites now use WhatsApp sharing via `Linking.openURL('whatsapp://send?text=...')`.
+- [x] Pre-filled invite message in English and Arabic with household name.
+- [x] Email invites still available via backend `POST /v1/households/:id/invites`.
+- [x] No external API or environment variables needed.
+
+### SMS Parsing (Bank SMS Import)
+- [x] Backend implementation: `src/lib/parsers/sms-parser.ts` parses pasted bank SMS text into draft transactions (local regex, no external API).
+- [x] Bank patterns: `src/lib/parsers/sms-bank-patterns.ts` with support for Al Rajhi, SNB, Riyad Bank, and generic Saudi bank formats.
+- [x] Supports both Arabic and English SMS formats.
+- [x] Extracts: amount, merchant, date, card last-4, transaction type, currency (SAR), confidence score.
+- [x] No external API or environment variables needed — runs entirely locally.
+
+## 16. Assumptions and Defaults Chosen
 - [x] Authentication model: Supabase Auth (JWT verified by backend).
-- [x] Providers: Google Vision OCR + Google Speech-to-Text + Twilio SMS. *(Deferred to Phase 2)*
-- [ ] Deployment: Railway for API/worker, Supabase for DB/Auth/Storage. *(Ops — needs Railway account)*
+- [x] Providers: Google Vision OCR + Google Speech-to-Text. Family invites via WhatsApp (Twilio removed).
+- [x] Deployment: Railway for API/worker, Supabase for DB/Auth/Storage.
 - [x] Authorization model: strict backend-enforced RBAC aligned with family permissions in UI.
 - [x] OCR/Voice processing mode: async jobs with polling endpoint. *(Done — Phase 2)*
 - [x] Frontend updated — all mock data imports replaced with real `/v1/*` API calls across all 12 screens (auth, dashboard, transactions, analytics, planner, family, add-transaction, budget detail, goal detail, goal new, notifications, family members). Added `useApi` hook, Supabase auth integration in AppContext, loading states, error handling, and `expo-secure-store` for token persistence.

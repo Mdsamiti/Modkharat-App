@@ -229,8 +229,9 @@
     "manageMembers": "Manage Members",
     "removeMember": "Remove Member",
     "inviteMember": "Invite Member",
+    "inviteByEmail": "Invite by Email",
+    "inviteByWhatsApp": "Invite via WhatsApp",
     "email": "Email",
-    "phone": "Phone",
     "sendInvite": "Send Invite"
   },
   "common": {

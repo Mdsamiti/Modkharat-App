@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Switch, ActivityIndicator, Alert } from 'react-native';
-import { Plus, Mail, Phone, Crown, Trash2 } from 'lucide-react-native';
+import React from 'react';
+import { View, Text, ScrollView, Pressable, Switch, ActivityIndicator, Alert, Linking } from 'react-native';
+import { Plus, Crown, Trash2, MessageCircle } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { useApp } from '@/context/AppContext';
@@ -13,6 +13,7 @@ export default function FamilyMembersScreen() {
 
   const { data: householdsData } = useApi(() => householdsApi.listHouseholds(), []);
   const householdId = householdsData?.data?.[0]?.id;
+  const householdName = householdsData?.data?.[0]?.name ?? 'Modkharat';
 
   const { data: membersData, isLoading, refetch } = useApi(
     () => householdId ? householdsApi.getMembers(householdId) : Promise.resolve({ data: [] }),
@@ -20,10 +21,6 @@ export default function FamilyMembersScreen() {
   );
   const members = membersData?.data ?? [];
 
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
-  const [inviteValue, setInviteValue] = useState('');
-  const [isSending, setIsSending] = useState(false);
 
   const permissions = [
     { key: 'viewOnly', label: t('familyMembers.viewOnly') },
@@ -32,19 +29,23 @@ export default function FamilyMembersScreen() {
     { key: 'canManageMembers', label: t('familyMembers.manageMembers') },
   ];
 
-  const handleInvite = async () => {
-    if (!householdId || !inviteValue) return;
-    setIsSending(true);
-    try {
-      await householdsApi.inviteMember(householdId, inviteValue);
-      setShowInvite(false);
-      setInviteValue('');
-      Alert.alert(language === 'en' ? 'Invite sent' : 'تم إرسال الدعوة');
-    } catch (err: any) {
-      Alert.alert(language === 'en' ? 'Error' : 'خطأ', err?.message || 'Failed to send invite');
-    } finally {
-      setIsSending(false);
-    }
+  const handleWhatsAppInvite = () => {
+    const message = language === 'ar'
+      ? `🏠 تمت دعوتك للانضمام إلى "${householdName}" على تطبيق مدخراتي!\n\nحمّل التطبيق وسجّل بنفس البريد الإلكتروني للانضمام إلى العائلة.`
+      : `🏠 You've been invited to join "${householdName}" on Modkharat!\n\nDownload the app and sign up with the same email to join the family.`;
+
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+
+    Linking.canOpenURL(whatsappUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(whatsappUrl);
+      } else {
+        Alert.alert(
+          language === 'en' ? 'WhatsApp not installed' : 'واتساب غير مثبت',
+          language === 'en' ? 'Please install WhatsApp to send invites.' : 'يرجى تثبيت واتساب لإرسال الدعوات.',
+        );
+      }
+    });
   };
 
   const handleRemove = async (memberId: string, memberName: string) => {
@@ -157,88 +158,17 @@ export default function FamilyMembersScreen() {
           </View>
         ))}
 
-        {/* Invite Button / Form */}
+        {/* WhatsApp Invite Button */}
         <View className="mx-4 mt-4 mb-6">
-          {!showInvite ? (
-            <Pressable
-              onPress={() => setShowInvite(true)}
-              className="bg-blue-600 rounded-2xl py-4 flex-row items-center justify-center active:bg-blue-700"
-              accessibilityRole="button"
-              accessibilityLabel={t('familyMembers.inviteMember')}
-            >
-              <Plus size={20} color="#ffffff" />
-              <Text className="text-white font-semibold ml-2">{t('familyMembers.inviteMember')}</Text>
-            </Pressable>
-          ) : (
-            <View className="bg-white rounded-2xl p-4">
-              <Text className="text-slate-800 font-semibold text-base mb-3">{t('familyMembers.inviteMember')}</Text>
-
-              {/* Method Toggle */}
-              <View className="flex-row gap-2 mb-4">
-                <Pressable
-                  onPress={() => setInviteMethod('email')}
-                  className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
-                    inviteMethod === 'email' ? 'bg-blue-600' : 'bg-slate-100'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('familyMembers.email')}
-                >
-                  <Mail size={16} color={inviteMethod === 'email' ? '#ffffff' : '#64748b'} />
-                  <Text className={`ml-2 font-medium text-sm ${inviteMethod === 'email' ? 'text-white' : 'text-slate-600'}`}>
-                    {t('familyMembers.email')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setInviteMethod('phone')}
-                  className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
-                    inviteMethod === 'phone' ? 'bg-blue-600' : 'bg-slate-100'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('familyMembers.phone')}
-                >
-                  <Phone size={16} color={inviteMethod === 'phone' ? '#ffffff' : '#64748b'} />
-                  <Text className={`ml-2 font-medium text-sm ${inviteMethod === 'phone' ? 'text-white' : 'text-slate-600'}`}>
-                    {t('familyMembers.phone')}
-                  </Text>
-                </Pressable>
-              </View>
-
-              <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base text-slate-800 mb-4"
-                value={inviteValue}
-                onChangeText={setInviteValue}
-                placeholder={inviteMethod === 'email' ? t('familyMembers.email') : t('familyMembers.phone')}
-                placeholderTextColor="#94a3b8"
-                keyboardType={inviteMethod === 'email' ? 'email-address' : 'phone-pad'}
-                autoCapitalize="none"
-                accessibilityLabel={inviteMethod === 'email' ? t('familyMembers.email') : t('familyMembers.phone')}
-              />
-
-              <View className="flex-row gap-3">
-                <Pressable
-                  onPress={() => setShowInvite(false)}
-                  className="flex-1 bg-slate-100 rounded-xl py-3.5 items-center active:bg-slate-200"
-                  accessibilityRole="button"
-                  accessibilityLabel={t('common.cancel')}
-                >
-                  <Text className="text-slate-600 font-medium">{t('common.cancel')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleInvite}
-                  disabled={isSending}
-                  className={`flex-1 rounded-xl py-3.5 items-center ${isSending ? 'bg-blue-400' : 'bg-blue-600 active:bg-blue-700'}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('familyMembers.sendInvite')}
-                >
-                  {isSending ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="text-white font-semibold">{t('familyMembers.sendInvite')}</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          )}
+          <Pressable
+            onPress={handleWhatsAppInvite}
+            className="bg-green-600 rounded-2xl py-4 flex-row items-center justify-center active:bg-green-700"
+            accessibilityRole="button"
+            accessibilityLabel={t('familyMembers.inviteByWhatsApp')}
+          >
+            <MessageCircle size={20} color="#ffffff" />
+            <Text className="text-white font-semibold ml-2">{t('familyMembers.inviteByWhatsApp')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
